@@ -4,6 +4,9 @@ interface TelegramWebApp {
   ready(): void;
   expand(): void;
   openLink(url: string): void;
+  setHeaderColor?(color: string): void;
+  setBackgroundColor?(color: string): void;
+  BackButton?: { show(): void; hide(): void; onClick(cb: () => void): void; offClick(cb: () => void): void };
 }
 
 declare global {
@@ -25,6 +28,9 @@ export function initTelegram() {
   const w = webApp();
   w?.ready();
   w?.expand();
+  // Match the app's own dark green so the Telegram header and overscroll don't flash another color.
+  w?.setHeaderColor?.("#0e3328");
+  w?.setBackgroundColor?.("#0e3328");
 }
 
 /** Opens a URL outside the Mini App (needed for the face-verification page, which needs the camera). */

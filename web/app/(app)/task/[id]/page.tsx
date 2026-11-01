@@ -89,9 +89,9 @@ export default function TaskPage() {
       await api("/v1/relay/submit", { body: { bountyId: bountyId.toString(), submissionHash: expected, deadline: deadline.toString(), signature } });
     });
 
-  if (bountyId === 0n) return <p className="err">Unknown task.</p>;
-  if (bounty.isLoading) return <p className="hint">Loading…</p>;
-  if (!b || b[0] === "0x0000000000000000000000000000000000000000") return <p className="err">Task not found.</p>;
+  if (bountyId === 0n) return <div className="card err-card"><strong>Unknown task</strong><div className="hint">Check the task number and try again.</div></div>;
+  if (bounty.isLoading) return <div className="card skeleton" aria-busy="true">Loading task…</div>;
+  if (!b || b[0] === "0x0000000000000000000000000000000000000000") return <div className="card err-card"><strong>Task not found</strong><div className="hint">It may have been removed, or the number is wrong.</div></div>;
 
   const [, , answersNeeded, minTier, accepted, active, refunded, deadline, reward, bond] = b;
   const fee = (reward * BigInt(b[1])) / 10000n;
@@ -100,7 +100,8 @@ export default function TaskPage() {
 
   return (
     <>
-      <h1>Task #{bountyId.toString()}</h1>
+      <p className="step-tag">Task #{bountyId.toString()}</p>
+      <h1>Price check</h1>
       <div className="card">
         <div className="row"><span>You earn</span><strong>{formatAmount(reward - fee, ngn)}</strong></div>
         <div className="row"><span className="hint">Refundable bond</span><span>{formatAmount(bond, ngn)}</span></div>
@@ -131,9 +132,9 @@ export default function TaskPage() {
         </div>
       )}
 
-      {state === "submitted" && <div className="card ok">✓ Submitted. You'll be paid once it's verified.</div>}
-      {state === "accepted" && <div className="card ok">✓ Accepted. Payment sent.</div>}
-      {state === "rejected" && <div className="card err">This answer was not accepted.</div>}
+      {state === "submitted" && <div className="card ok-card"><strong>✓ Submitted</strong><div className="hint">You'll be paid once it's verified.</div></div>}
+      {state === "accepted" && <div className="card ok-card"><strong>✓ Accepted</strong><div className="hint">Payment sent to your wallet.</div></div>}
+      {state === "rejected" && <div className="card err-card"><strong>Not accepted</strong><div className="hint">This answer was not accepted.</div></div>}
       {state === "expired" && <div className="card">Your time ran out and your bond was returned.</div>}
       {error && <p className="err">{error}</p>}
     </>

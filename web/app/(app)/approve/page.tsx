@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { maxUint256, parseEther } from "viem";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
@@ -49,19 +50,30 @@ export default function ApprovePage() {
 
   return (
     <>
+      <p className="step-tag">Step 3 of 3</p>
       <h1>Allow G$ for task deposits</h1>
-      <p className="hint">
-        One time only. Each task asks for a small refundable bond in G$ that you get back when your work is accepted. This lets the
-        task contract take that bond when you tap Claim. It can't move anything else.
-      </p>
+      <p className="hint">One quick approval so you can take tasks.</p>
+      <ul className="facts">
+        <li><strong>Bond only.</strong> Each task holds a small amount of G$ while you work.</li>
+        <li><strong>Refundable.</strong> You get it back when your work is accepted.</li>
+        <li><strong>One time.</strong> You won't be asked again.</li>
+      </ul>
       {me?.approved ? (
-        <div className="card ok">✓ Done. You can take tasks.</div>
+        <>
+          <div className="card ok-card"><strong>✓ All set</strong><div className="hint">You can take tasks now.</div></div>
+          <Link className="btn" href="/app">Back to home</Link>
+        </>
       ) : (
         <>
           <WalletBar />
-          {wrongWallet && <p className="err">Connect the wallet you linked ({me?.address}).</p>}
+          {wrongWallet && <p className="err">Connect the wallet you linked: <span className="mono">{me?.address}</span></p>}
           {me?.verified === false && <p className="err">Verify your face first.</p>}
-          {me?.predeploy && <p className="err">The task contract isn't deployed yet, so there's nothing to approve. You're verified, so this step will work once it is.</p>}
+          {me?.predeploy && (
+            <div className="card info-card">
+              <strong>Almost ready</strong>
+              <div className="hint">The task contract isn't live yet, so there's nothing to approve for now. You're already verified, and this step unlocks as soon as it launches.</div>
+            </div>
+          )}
           {lowGas && (
             <div className="card">
               <p style={{ marginTop: 0 }}>You need a tiny amount of CELO to pay the network fee for this one step.</p>

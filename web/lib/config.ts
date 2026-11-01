@@ -11,7 +11,7 @@ export const config = {
   identity: GOODDOLLAR[env].identity as Address,
   rpcUrl: process.env.NEXT_PUBLIC_CELO_RPC_URL ?? "https://forno.celo.org",
   walletConnectProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "",
-  miniAppLink: process.env.NEXT_PUBLIC_MINIAPP_LINK ?? "",
+  miniAppLink: process.env.NEXT_PUBLIC_MINIAPP_LINK || "https://t.me/EziokwBot/app",
   /** The GoodDollar SDK's environment name for our deploy env. */
   /** GoodDollar's own wallet app per environment (addresses from @goodsdks/citizen-sdk). Fallback place to verify. */
   gooddollarApp: env === "prod" ? "https://wallet.gooddollar.org" : "https://goodid-dev.vercel.app",

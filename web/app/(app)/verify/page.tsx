@@ -1,6 +1,7 @@
 "use client";
 
 import { IdentitySDK } from "@goodsdks/citizen-sdk";
+import Link from "next/link";
 import { useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
 import { CELO_CHAIN_ID } from "@eziokwu/shared";
@@ -63,13 +64,16 @@ export default function VerifyPage() {
 
   return (
     <>
+      <p className="step-tag">Step 2 of 3</p>
       <h1>Verify you're a real person</h1>
       <p className="hint">
-        GoodDollar checks that you're a unique human with a quick face scan. This is what keeps {""}
-        one person from taking many tasks. Your face image is not shared with us.
+        GoodDollar checks that you're a unique human with a quick face scan. This keeps one person from taking many tasks. Your face image is not shared with us.
       </p>
       {me?.verified ? (
-        <div className="card ok">✓ Verified</div>
+        <>
+          <div className="card ok-card"><strong>✓ Verified</strong><div className="hint">You're confirmed as a unique human.</div></div>
+          <Link className="btn" href="/approve">Next: allow G$ for task deposits</Link>
+        </>
       ) : (
         <>
           {!me?.linked && <p className="err">Link your wallet first.</p>}
