@@ -1,0 +1,27 @@
+:root {
+  --bg: var(--tg-theme-bg-color, #ffffff);
+  --fg: var(--tg-theme-text-color, #111111);
+  --hint: var(--tg-theme-hint-color, #6b7280);
+  --accent: var(--tg-theme-button-color, #0a7d4b);
+  --accent-fg: var(--tg-theme-button-text-color, #ffffff);
+  --card: var(--tg-theme-secondary-bg-color, #f3f4f6);
+  --err: #b42318;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.45 system-ui, -apple-system, sans-serif; }
+main { max-width: 480px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 1.4rem; margin: 0 0 4px; }
+p.hint, .hint { color: var(--hint); font-size: 0.9rem; }
+.card { background: var(--card); border-radius: 12px; padding: 14px; margin: 12px 0; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+button, .btn { display: block; width: 100%; padding: 13px; border: 0; border-radius: 10px; background: var(--accent); color: var(--accent-fg); font-size: 1rem; font-weight: 600; text-align: center; text-decoration: none; cursor: pointer; }
+button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+button:disabled { opacity: 0.5; cursor: default; }
+input, textarea, select { width: 100%; padding: 11px; border-radius: 8px; border: 1px solid var(--hint); background: var(--bg); color: var(--fg); font: inherit; margin: 4px 0 10px; }
+label { font-size: 0.85rem; color: var(--hint); }
+.err { color: var(--err); margin: 8px 0; }
+.ok { color: var(--accent); }
+.step { display: flex; gap: 10px; align-items: center; }
+.dot { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--hint); color: #fff; font-size: 0.8rem; flex: none; }
+.dot.done { background: var(--accent); }
+a { color: var(--accent); }

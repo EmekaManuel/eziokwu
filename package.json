@@ -1,0 +1,11 @@
+{
+  "name": "eziokwu",
+  "private": true,
+  "packageManager": "pnpm@10.0.0",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "gen:abi": "node scripts/gen-abi.mjs",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
+  }
+}
