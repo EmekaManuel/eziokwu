@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { parseEther, type Address, type Hex } from "viem";
-import { bountyBoardAbi, claimTypedData, erc20Abi, hashSubmission, linkMessage, submitTypedData, EIP712_DOMAIN_NAME, EIP712_DOMAIN_VERSION } from "@eziokwu/shared";
+import { bountyBoardAbi, claimTypedData, erc20Abi, hashSubmission, hashTask, linkMessage, submitTypedData, EIP712_DOMAIN_NAME, EIP712_DOMAIN_VERSION } from "@eziokwu/shared";
 import { signInitData } from "../src/telegram";
 import { BOT_TOKEN, deployAll, mockGdAbi, startChain, type Chain, type Env } from "./harness";
 
@@ -124,6 +124,20 @@ describe("wallet linking", () => {
   });
 });
 
+describe("task descriptions", () => {
+  it("serves the text behind a bounty, and 404s for an unknown one", async () => {
+    const spec = { kind: "price" as const, title: "Rice", description: "50 kg bag", item: "Rice", unit: "bag", currency: "NGN", marketName: null, city: "Lagos", lat: 6.6, lng: 3.35, radiusM: 5000 };
+    env.tasks.add({ bountyId: 77, specHash: hashTask(spec), spec });
+    const ok = await api(env, "GET", "/v1/tasks/77", nextTg++);
+    expect(ok.status).toBe(200);
+    expect(ok.json.spec.title).toBe("Rice");
+    expect(ok.json.specHash).toBe(hashTask(spec));
+    expect((await api(env, "GET", "/v1/tasks/78", nextTg++)).status).toBe(404);
+    expect((await api(env, "GET", "/v1/tasks/abc", nextTg++)).status).toBe(400);
+    expect((await api(env, "GET", "/v1/tasks/77", null)).status).toBe(401); // initData required
+  });
+});
+
 describe("gasless claim -> submit -> resolve (end to end)", () => {
   it("pays the worker, with the relayer paying all gas", async () => {
     const w = await env.newWorker({ verified: true, gd: parseEther("50"), approve: true });
@@ -153,6 +167,8 @@ describe("gasless claim -> submit -> resolve (end to end)", () => {
     const s = await api(env, "POST", "/v1/relay/submit", tg, { bountyId: id.toString(), submissionHash: up.json.submissionHash, deadline: deadline.toString(), signature: sig });
     expect(s.status, JSON.stringify(s.json)).toBe(200);
     expect(await claimState(env, id, w.account.address)).toBe(2);
+    // our own record follows the relayed steps (used by /mytasks)
+    expect(env.tasks.claims.get(`${id}:${w.account.address.toLowerCase()}`)).toEqual({ telegramId: String(tg), state: "submitted" });
     const stored = await env.publicClient.readContract({ address: env.board, abi: bountyBoardAbi, functionName: "claims", args: [id, w.account.address] });
     expect(stored[4]).toBe(up.json.submissionHash);
 

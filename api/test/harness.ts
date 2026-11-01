@@ -6,7 +6,7 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { bountyBoardAbi, erc20Abi } from "@eziokwu/shared";
 import { buildApp } from "../src/app";
 import { Relayer, topupPolicyFrom } from "../src/relayer";
-import { MemoryBlobStore, MemoryStore } from "../src/store";
+import { MemoryBlobStore, MemoryStore, MemoryTaskStore } from "../src/store";
 
 export const BOT_TOKEN = "123456:TEST-bot-token-not-real";
 const OUT = resolve(__dirname, "../../contracts/out");
@@ -69,6 +69,7 @@ export async function deployAll(c: Chain, opts: { rateLimit?: boolean; topup?: P
 
   const store = new MemoryStore();
   const blobs = new MemoryBlobStore();
+  const tasks = new MemoryTaskStore();
   const relayer = new Relayer({
     publicClient: c.publicClient,
     walletClient: relayerAcct.wallet,
@@ -87,6 +88,7 @@ export async function deployAll(c: Chain, opts: { rateLimit?: boolean; topup?: P
     config: { TELEGRAM_BOT_TOKEN: BOT_TOKEN, INITDATA_MAX_AGE_SECONDS: 3600, CORS_ORIGIN: "*", NGN_PER_GD: 0.15, TOPUP_ENABLED: opts.topup?.enabled ?? false },
     store,
     blobs,
+    tasks,
     relayer,
     publicClient: c.publicClient,
     board,
@@ -119,7 +121,7 @@ export async function deployAll(c: Chain, opts: { rateLimit?: boolean; topup?: P
     return (await c.publicClient.readContract({ address: board, abi: bountyBoardAbi, functionName: "nextBountyId" })) - 1n;
   }
 
-  return { ...c, deployer, relayerAcct, verifier, requester, feeRecipient, gd, identity, board, store, blobs, relayer, app, write, newWorker, createBounty };
+  return { ...c, deployer, relayerAcct, verifier, requester, feeRecipient, gd, identity, board, store, blobs, tasks, relayer, app, write, newWorker, createBounty };
 }
 
 export type Env = Awaited<ReturnType<typeof deployAll>>;

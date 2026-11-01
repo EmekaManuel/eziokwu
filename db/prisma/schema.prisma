@@ -1,0 +1,88 @@
+// Eziokwu off-chain data. The chain is the source of truth for money and claim state; this database holds
+// what the chain cannot: Telegram links, task descriptions (their hash is the on-chain specHash), and answers.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Everyone who has talked to the bot or opened the Mini App.
+model User {
+  telegramId  String    @id
+  chatId      String? /// where the bot can message them; may differ from telegramId in theory
+  lat         Float? /// last location they shared (used for the nearby feed and nudges)
+  lng         Float?
+  locationAt  DateTime?
+  notify      Boolean   @default(true) /// daily "new tasks near you" message; /notify off sets false
+  lastNudgeAt DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+/// One Telegram account <-> one wallet. Both sides are unique.
+model Link {
+  telegramId String   @id
+  address    String   @unique /// lowercase 0x address
+  linkedAt   DateTime @default(now())
+}
+
+/// Single-use sign-in message nonce for linking.
+model Nonce {
+  telegramId String   @id
+  nonce      String
+  expiresAt  DateTime
+}
+
+/// One CELO top-up per address, ever. Rows count toward the rolling daily cap.
+model Topup {
+  address   String   @id /// lowercase
+  amountWei BigInt
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+/// What the task asks for. `specHash` = keccak256 of the canonical JSON of the spec fields; the same hash is
+/// stored on-chain in the bounty, so anyone can check that the text shown here was not changed.
+model Task {
+  id          Int      @id @default(autoincrement())
+  bountyId    Int?     @unique /// on-chain id; null until the bounty is posted
+  kind        String   @default("price")
+  title       String
+  description String
+  item        String? /// e.g. "Rice, 50 kg bag"
+  unit        String? /// e.g. "bag"
+  currency    String   @default("NGN")
+  marketName  String?
+  city        String?
+  lat         Float
+  lng         Float
+  radiusM     Int      @default(5000) /// how close a worker must be
+  specHash    String   @unique
+  createdAt   DateTime @default(now())
+
+  @@index([lat, lng])
+}
+
+/// Content-addressed answer files (key = keccak256 of the bytes, same as the on-chain submissionHash).
+model Blob {
+  hash      String   @id
+  bytes     Bytes
+  createdAt DateTime @default(now())
+}
+
+/// Our record of who claimed what, kept for /mytasks and /earnings. The chain still decides the real state.
+model Claim {
+  bountyId   Int
+  address    String /// lowercase worker address
+  telegramId String
+  state      String   @default("claimed") /// claimed | submitted | accepted | rejected | expired
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@id([bountyId, address])
+  @@index([telegramId])
+}

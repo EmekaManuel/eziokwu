@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { Address, Hex } from "viem";
+import type { TaskSpec } from "@eziokwu/shared";
 
 export interface Link {
   telegramId: string;
@@ -94,5 +95,33 @@ export class MemoryBlobStore implements BlobStore {
   }
   async get(hash: Hex) {
     return this.m.get(hash.toLowerCase());
+  }
+}
+
+export interface TaskView {
+  bountyId: number;
+  specHash: Hex;
+  spec: TaskSpec;
+}
+
+export type ClaimRecordState = "claimed" | "submitted" | "accepted" | "rejected" | "expired";
+
+/** Task descriptions and our record of who claimed what. */
+export interface TaskStore {
+  getByBountyId(bountyId: number): Promise<TaskView | undefined>;
+  recordClaim(bountyId: number, address: Address, telegramId: string, state: ClaimRecordState): Promise<void>;
+}
+
+export class MemoryTaskStore implements TaskStore {
+  private tasks = new Map<number, TaskView>();
+  readonly claims = new Map<string, { telegramId: string; state: ClaimRecordState }>();
+  add(t: TaskView) {
+    this.tasks.set(t.bountyId, t);
+  }
+  async getByBountyId(bountyId: number) {
+    return this.tasks.get(bountyId);
+  }
+  async recordClaim(bountyId: number, address: Address, telegramId: string, state: ClaimRecordState) {
+    this.claims.set(`${bountyId}:${address.toLowerCase()}`, { telegramId, state });
   }
 }

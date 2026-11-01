@@ -31,11 +31,21 @@ EIP-712 domain name is "Eziokwu BountyBoard" and must be changed before mainnet 
 - [x] /web Mini App: link, verify (citizen-sdk), approve, task claim + submit. Builds clean.
 - [x] 33 API tests against a local anvil chain; contract tests unchanged
 - [ ] NOT tested: the Mini App UI inside real Telegram with a real wallet / real face verification (needs bot + deployed contract)
-- [ ] Stage 4 swaps MemoryStore for Postgres (links currently lost on API restart)
+
 - [ ] Task spec/title/photo/location in the task page arrive with stages 4-5
 - [ ] Need: Telegram bot token, WalletConnect project id, relayer key (funded), deployed BountyBoard
 
-## Stage 4: Telegram bot + DB schema + location feed
+## Stage 4: Telegram bot + DB schema + location feed  (BUILT + tested, awaiting review / "continue")
+- [x] /db package: Prisma 6 schema + migration (User, Link, Nonce, Topup, Task, Blob, Claim); tasksNear (bbox in SQL, exact haversine in code)
+- [x] /api: PgStore/PgBlobStore/PgTaskStore replace memory when DATABASE_URL is set; same contract test runs on both stores (incl. races: nonce, wallet link, top-up cap; removing the advisory lock makes the cap test fail)
+- [x] Task descriptions: Task table; specHash = keccak256(canonical JSON) is the on-chain specHash; GET /v1/tasks/:bountyId; Mini App recomputes the hash and warns on mismatch
+- [x] /bot package (grammY): /start /help /link /tasks /mytasks /earnings /tier /notify /forgetme, location feed (open tasks only, nearest first, net-of-fee reward), daily nudge with opt-out + 403 handling; 13 tests with real Postgres + fake chain
+- [x] Bot can run inside the API (BOT_ENABLED=true, long polling) or standalone (pnpm --filter @eziokwu/bot start). ONE poller per token.
+- [x] scripts/dev-db.sh (local Postgres :5433), api/scripts/task.ts (create/link task description), dev-requester.sh create takes SPEC_HASH
+- [ ] NOT done (moved to stage 5 with the verifier, because verification needs the media): photo + live-location capture, voice note submissions, file storage
+- [ ] NOT tested: bot against real Telegram (needs the NEW bot token + BOT_ENABLED=true + WEB_APP_URL); Mini App task-description UI not looked at in a browser
+- [ ] Rate limiting on bot commands (grammY throttler) not added
+- [ ] Hosting: Render needs a Postgres + DATABASE_URL, start = migrate deploy then api start
 ## Stage 5: Verifier pipeline + review queue
 ## Stage 6: Price-index job + /prices
 ## Stage 7: Requester API + MCP + dashboard

@@ -15,6 +15,14 @@ const schema = z.object({
   /** Hot key that pays gas for claimFor/submitFor. Holds gas money only; it has no authority over bounties. */
   RELAYER_PRIVATE_KEY: key,
   TELEGRAM_BOT_TOKEN: z.string().min(10),
+  /** Postgres URL. Unset = in-memory (state is lost on restart; fine for tests only). */
+  DATABASE_URL: z.string().url().optional(),
+  /** Run the Telegram bot inside this process (long polling). Only ONE process may poll per bot token. */
+  BOT_ENABLED: z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
+  /** Public https address of the Mini App; the bot's buttons open pages under it. Required when BOT_ENABLED. */
+  WEB_APP_URL: z.string().url().optional(),
+  /** Hour (UTC, 0-23) when the daily "new tasks near you" message goes out. */
+  NUDGE_HOUR_UTC: z.coerce.number().int().min(0).max(23).default(8),
   CORS_ORIGIN: z.string().default("*"),
   /** initData older than this is rejected. */
   INITDATA_MAX_AGE_SECONDS: z.coerce.number().default(3600),

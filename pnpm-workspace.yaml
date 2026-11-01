@@ -1,5 +1,6 @@
 packages:
   - "shared"
+  - "db"
   - "bot"
   - "web"
   - "api"

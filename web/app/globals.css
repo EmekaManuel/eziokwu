@@ -188,3 +188,6 @@ html[data-tg] .topbar { display: none; }
 .stat strong { font: 800 2rem/1 var(--font-display), sans-serif; color: var(--amber); min-width: 5.5ch; }
 .stat span { color: var(--muted); }
 .faq h2 { margin-bottom: 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.chip { font: 500 0.75rem var(--font-mono), monospace; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--cream); }
+.spec-ok { margin: 12px 0 0; color: var(--ok); }

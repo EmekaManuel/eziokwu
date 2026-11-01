@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { useAccount, usePublicClient, useReadContract } from "wagmi";
@@ -9,8 +10,10 @@ import {
   claimTypedData,
   formatAmount,
   hashSubmission,
+  hashTask,
   submitTypedData,
   type SubmissionPayload,
+  type TaskSpec,
 } from "@eziokwu/shared";
 import { WalletBar } from "@/components/WalletBar";
 import { api, explain } from "@/lib/api";
@@ -37,6 +40,9 @@ export default function TaskPage() {
     args: [bountyId, worker!],
     query: { enabled: !!worker && bountyId > 0n, refetchInterval: 10_000 },
   });
+
+  // The text behind the on-chain specHash. We recompute the hash ourselves, so a tampered description is detected.
+  const spec = useQuery({ queryKey: ["task", idParam], enabled: bountyId > 0n, retry: false, queryFn: () => api<{ spec: TaskSpec; specHash: `0x${string}` }>(`/v1/tasks/${bountyId}`) });
 
   const [price, setPrice] = useState("");
   const [note, setNote] = useState("");
@@ -95,7 +101,9 @@ export default function TaskPage() {
   if (bounty.isLoading) return <div className="card skeleton" aria-busy="true">Loading task…</div>;
   if (!b || b[0] === "0x0000000000000000000000000000000000000000") return <div className="card err-card"><strong>Task not found</strong><div className="hint">It may have been removed, or the number is wrong.</div></div>;
 
-  const [, , answersNeeded, minTier, accepted, active, refunded, deadline, reward, bond] = b;
+  const [, , answersNeeded, minTier, accepted, active, refunded, deadline, reward, bond, onChainSpecHash] = b;
+  const task = spec.data?.spec;
+  const specOk = !!task && hashTask(task).toLowerCase() === onChainSpecHash.toLowerCase();
   const fee = (reward * BigInt(b[1])) / 10000n;
   const open = answersNeeded - accepted - active - refunded;
   const closed = BigInt(Math.floor(Date.now() / 1000)) >= deadline;
@@ -103,7 +111,23 @@ export default function TaskPage() {
   return (
     <>
       <p className="step-tag">Task #{bountyId.toString()}</p>
-      <h1>Price check</h1>
+      <h1>{specOk ? task!.title : "Price check"}</h1>
+      {specOk && (
+        <div className="card spec">
+          <p style={{ margin: 0 }}>{task!.description}</p>
+          <div className="chips">
+            {task!.item && <span className="chip">{task!.item}</span>}
+            {task!.marketName && <span className="chip">{task!.marketName}</span>}
+            {task!.city && <span className="chip">{task!.city}</span>}
+            <span className="chip">within {task!.radiusM >= 1000 ? `${task!.radiusM / 1000} km` : `${task!.radiusM} m`}</span>
+          </div>
+          <div className="hint spec-ok">✓ This description matches the one locked on-chain.</div>
+        </div>
+      )}
+      {task && !specOk && (
+        <div className="card err-card"><strong>Description doesn't match</strong><div className="hint">The text we have for this task doesn't match what the requester locked on-chain. Don't take it.</div></div>
+      )}
+      {!task && !spec.isLoading && <p className="hint">No description is available for this task yet.</p>}
       <div className="card">
         <div className="row"><span>You earn</span><strong>{formatAmount(reward - fee, ngn)}</strong></div>
         <div className="row"><span className="hint">Refundable bond</span><span>{formatAmount(bond, ngn)}</span></div>
@@ -134,7 +158,7 @@ export default function TaskPage() {
         <div className="card">
           <p style={{ marginTop: 0 }}>You have this task. Submit your answer before your time runs out.</p>
           {/* TODO(stage 4): photo + live location capture. For now: price and a note. */}
-          <label>Price you found (₦)</label>
+          <label>{task?.item ? `Price of ${task.item}${task.unit ? ` (per ${task.unit})` : ""} (₦)` : "Price you found (₦)"}</label>
           <input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))} />
           <label>Note (optional)</label>
           <textarea rows={2} maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} />

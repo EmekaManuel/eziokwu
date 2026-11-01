@@ -7,12 +7,14 @@ import { bountyBoardAbi, canonicalSubmission, hashBytes, linkMessage, type Submi
 import type { Config } from "./config";
 import { RelayError, type Relayer } from "./relayer";
 import { verifyInitData, type TelegramUser } from "./telegram";
-import type { BlobStore, Store } from "./store";
+import { MemoryTaskStore, type BlobStore, type Store, type TaskStore } from "./store";
 
 export interface AppDeps {
   config: Pick<Config, "TELEGRAM_BOT_TOKEN" | "INITDATA_MAX_AGE_SECONDS" | "CORS_ORIGIN" | "NGN_PER_GD" | "TOPUP_ENABLED">;
   store: Store;
   blobs: BlobStore;
+  /** Task descriptions and claim records. Defaults to an empty in-memory store. */
+  tasks?: TaskStore;
   relayer: Relayer;
   publicClient: PublicClient<Transport, Chain>;
   board: Address;
@@ -35,7 +37,8 @@ const address = z.string().refine((s) => isAddress(s), "bad address").transform(
 
 const MAX_SUBMISSION_BYTES = 4096;
 
-export async function buildApp(d: AppDeps): Promise<FastifyInstance> {
+export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
+  const d = { ...deps, tasks: deps.tasks ?? new MemoryTaskStore() };
   const app = Fastify({ logger: false, bodyLimit: 64 * 1024 });
   await app.register(cors, { origin: d.config.CORS_ORIGIN === "*" ? true : d.config.CORS_ORIGIN.split(",") });
   if (d.rateLimit !== false) await app.register(rateLimit, { global: true, max: 120, timeWindow: "1 minute" });
@@ -123,6 +126,14 @@ export async function buildApp(d: AppDeps): Promise<FastifyInstance> {
     return { hash: r.hash, amountWei: r.amountWei.toString() };
   });
 
+  // --- task descriptions: the text behind a bounty's on-chain specHash --------------------------
+  app.get("/v1/tasks/:bountyId", async (req) => {
+    const { bountyId } = z.object({ bountyId: z.string().regex(/^\d{1,9}$/) }).parse(req.params);
+    const task = await d.tasks.getByBountyId(Number(bountyId));
+    if (!task) throw new RelayError("not_found", "no description for this task", 404);
+    return task;
+  });
+
   // --- submissions (off-chain answer; the on-chain hash is keccak256 of exactly these bytes) ----
   app.post("/v1/submissions", { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (req) => {
     const link = await requireLink(req);
@@ -157,6 +168,7 @@ export async function buildApp(d: AppDeps): Promise<FastifyInstance> {
     const link = await requireLink(req);
     const b = z.object({ bountyId: uint, deadline: uint, signature: sig }).parse(req.body);
     const hash = await d.relayer.claimFor(b.bountyId, link.address, b.deadline, b.signature);
+    await d.tasks.recordClaim(Number(b.bountyId), link.address, link.telegramId, "claimed");
     return { hash };
   });
 
@@ -166,6 +178,7 @@ export async function buildApp(d: AppDeps): Promise<FastifyInstance> {
     // The hash stored on-chain must correspond to a file we hold.
     if (!(await d.blobs.has(b.submissionHash))) throw new RelayError("unknown_submission", "upload the answer first", 409);
     const hash = await d.relayer.submitFor(b.bountyId, link.address, b.submissionHash, b.deadline, b.signature);
+    await d.tasks.recordClaim(Number(b.bountyId), link.address, link.telegramId, "submitted");
     return { hash };
   });
 

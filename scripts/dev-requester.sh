@@ -4,6 +4,8 @@
 # transaction on Celo mainnet (dev G$ / dev Identity contracts) and spends a little CELO.
 #
 #   scripts/dev-requester.sh create [reward_gd] [bond_gd]     post a 1-hour, 1-answer bounty
+#        SPEC_HASH=0x...  (from api/scripts/task.ts create) ties the bounty to a task description;
+#        with DATABASE_URL set it also links the description to the new bounty id
 #   scripts/dev-requester.sh status <bountyId> [worker]       read-only
 #   scripts/dev-requester.sh resolve <bountyId> <worker> accept|reject   (verifier key; RESOLVER=requester to use the requester key)
 set -euo pipefail
@@ -20,8 +22,21 @@ case "${1:-}" in
     REWARD="${2:-10}"; BOND="${3:-0}"
     K=$(key requester)
     TOTAL=$(cast to-wei "$REWARD")
-    echo "Approving $REWARD G\$ for the board…"
     REQ=$(jq -r .requester.address "$KEYS")
+    # Celo's gas price is ~200 gwei and the node refuses to estimate unless the balance covers gas at the max fee
+    # (~400 gwei), so creating a bounty needs about 0.25 CELO on hand even though it spends ~0.11.
+    MIN_CELO="${MIN_CELO:-0.25}"
+    HAVE_CELO=$(cast balance "$REQ" --ether --rpc-url "$RPC")
+    if [ "$(echo "$HAVE_CELO < $MIN_CELO" | bc)" = 1 ]; then
+      echo "Not enough CELO: $REQ has $HAVE_CELO, needs about $MIN_CELO. Send it more CELO on Celo, then run this again." >&2
+      exit 1
+    fi
+    HAVE_GD=$(cast call "$GD" "balanceOf(address)(uint256)" "$REQ" --rpc-url "$RPC" | awk '{print $1}')
+    if [ "$(echo "$HAVE_GD < $TOTAL" | bc)" = 1 ]; then
+      echo "Not enough dev G\$: $REQ has $(cast from-wei "$HAVE_GD"), needs $REWARD." >&2
+      exit 1
+    fi
+    echo "Approving $REWARD G\$ for the board…"
     allowance() { cast call "$GD" "allowance(address,address)(uint256)" "$REQ" "$BOARD" --rpc-url "$RPC" | awk '{print $1}'; }
     # Amounts are 18-decimal and overflow shell integers, so compare with bc.
     ge() { [ "$(echo "$1 >= $2" | bc)" = 1 ]; }
@@ -31,12 +46,15 @@ case "${1:-}" in
     # The RPC is load-balanced; wait until the approval is visible before the next call, or gas estimation reverts.
     for _ in $(seq 1 20); do ge "$(allowance)" "$TOTAL" && break; sleep 1; done
     DEADLINE=$(( $(date +%s) + 3600 ))
-    SPEC=$(cast keccak "eziokwu-dev-test-bounty-$(date +%s)")
+    SPEC="${SPEC_HASH:-$(cast keccak "eziokwu-dev-test-bounty-$(date +%s)")}"
     echo "Creating bounty (reward $REWARD G\$, bond $BOND G\$, closes in 1 hour)…"
     cast send "$BOARD" "createBounty(uint256,uint8,uint256,uint8,uint64,bytes32)" \
       "$TOTAL" 1 "$(cast to-wei "$BOND")" 0 "$DEADLINE" "$SPEC" --private-key "$K" --rpc-url "$RPC" >/dev/null
     NEXT=$(cast call "$BOARD" "nextBountyId()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
     echo "Done. Task number: $((NEXT - 1))"
+    if [ -n "${SPEC_HASH:-}" ] && [ -n "${DATABASE_URL:-}" ]; then
+      (cd "$ROOT/api" && pnpm exec tsx scripts/task.ts link "$SPEC_HASH" "$((NEXT - 1))")
+    fi
     ;;
   status)
     ID="${2:?bountyId}"
