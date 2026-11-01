@@ -3,7 +3,7 @@
 # Keys come from a local file outside the repo and are never printed. Every command except `status` SENDS a
 # transaction on Celo mainnet (dev G$ / dev Identity contracts) and spends a little CELO.
 #
-#   scripts/dev-requester.sh create [reward_gd] [bond_gd]     post a 1-hour, 1-answer bounty
+#   scripts/dev-requester.sh create [reward_gd] [bond_gd]     post a 1-answer bounty (DURATION=seconds, default 3600)
 #        SPEC_HASH=0x...  (from api/scripts/task.ts create) ties the bounty to a task description;
 #        with DATABASE_URL set it also links the description to the new bounty id
 #   scripts/dev-requester.sh status <bountyId> [worker]       read-only
@@ -45,15 +45,20 @@ case "${1:-}" in
     fi
     # The RPC is load-balanced; wait until the approval is visible before the next call, or gas estimation reverts.
     for _ in $(seq 1 20); do ge "$(allowance)" "$TOTAL" && break; sleep 1; done
-    DEADLINE=$(( $(date +%s) + 3600 ))
+    DEADLINE=$(( $(date +%s) + ${DURATION:-3600} ))
     SPEC="${SPEC_HASH:-$(cast keccak "eziokwu-dev-test-bounty-$(date +%s)")}"
-    echo "Creating bounty (reward $REWARD G\$, bond $BOND G\$, closes in 1 hour)…"
-    cast send "$BOARD" "createBounty(uint256,uint8,uint256,uint8,uint64,bytes32)" \
-      "$TOTAL" 1 "$(cast to-wei "$BOND")" 0 "$DEADLINE" "$SPEC" --private-key "$K" --rpc-url "$RPC" >/dev/null
-    NEXT=$(cast call "$BOARD" "nextBountyId()(uint256)" --rpc-url "$RPC" | awk '{print $1}')
-    echo "Done. Task number: $((NEXT - 1))"
+    echo "Creating bounty (reward $REWARD G\$, bond $BOND G\$, closes in $(( ${DURATION:-3600} / 3600 )) h)…"
+    RECEIPT=$(cast send "$BOARD" "createBounty(uint256,uint8,uint256,uint8,uint64,bytes32)" \
+      "$TOTAL" 1 "$(cast to-wei "$BOND")" 0 "$DEADLINE" "$SPEC" --private-key "$K" --rpc-url "$RPC" --json)
+    # Read the id from this transaction's own BountyCreated event. (Reading nextBountyId afterwards can return a
+    # stale value from a lagging RPC node and link the description to the wrong bounty.)
+    # (some cast wrappers nest the receipt under .data, so accept both shapes)
+    ID_HEX=$(echo "$RECEIPT" | jq -r --arg b "$(echo "$BOARD" | tr 'A-F' 'a-f')" 'if type == "object" and has("data") then .data else . end | [.logs[] | select((.address | ascii_downcase) == $b)][0].topics[1] // empty')
+    [ -n "$ID_HEX" ] || { echo "Could not read the bounty id from the transaction receipt; check the bounty on-chain before retrying." >&2; exit 1; }
+    NEWID=$(cast to-dec "$ID_HEX")
+    echo "Done. Task number: $NEWID"
     if [ -n "${SPEC_HASH:-}" ] && [ -n "${DATABASE_URL:-}" ]; then
-      (cd "$ROOT/api" && pnpm exec tsx scripts/task.ts link "$SPEC_HASH" "$((NEXT - 1))")
+      (cd "$ROOT/api" && pnpm exec tsx scripts/task.ts link "$SPEC_HASH" "$NEWID")
     fi
     ;;
   status)

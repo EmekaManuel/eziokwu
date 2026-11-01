@@ -125,6 +125,22 @@ describe("location feed", () => {
     expect(lastMarkup().inline_keyboard.map((r: any) => r[0].web_app.url)).toEqual([`${WEB}/task/1`, `${WEB}/task/2`]);
     expect(await db.user.findUnique({ where: { telegramId: "7" } })).toMatchObject({ lat: 6.6018, lng: 3.3515 });
   });
+  it("accepts typed coordinates (for desktop), and rejects nonsense", async () => {
+    await linkUser();
+    await addTask(1, "Rice", 6.6018, 3.3515);
+    bountiesOnChain.set(1, bounty());
+    await say("/here 6.6018, 3.3515");
+    expect(lastText()).toContain("Rice");
+    await say("6.6020 3.3510"); // plain message, space separated
+    expect(lastText()).toContain("Rice");
+    await say("/here 95, 3");
+    expect(lastText()).toContain("Send coordinates like");
+    await say("/here lagos");
+    expect(lastText()).toContain("Send coordinates like");
+    await say("/start");
+    await say("hello there"); // ordinary chat is ignored
+    expect(lastText()).not.toContain("Send coordinates");
+  });
   it("says so when nothing is open nearby", async () => {
     await linkUser();
     await shareLocation(0, 0);

@@ -56,6 +56,7 @@ export function createBot(d: BotDeps): Bot {
       [
         `<b>${APP_NAME}</b> commands`,
         "/tasks: tasks near you",
+        "/here 6.60, 3.35: set your location by typing it (for desktop)",
         "/mytasks: your active and past tasks",
         "/earnings: what you've earned",
         "/tier: your level and how to reach the next",
@@ -94,13 +95,27 @@ export function createBot(d: BotDeps): Bot {
     await showFeed(ctx, { lat: u.lat, lng: u.lng });
   });
 
-  bot.on("message:location", async (ctx) => {
-    const telegramId = String(ctx.from.id);
-    const { latitude: lat, longitude: lng } = ctx.message.location;
+  async function useLocation(ctx: Context, lat: number, lng: number) {
+    const telegramId = String(ctx.from!.id);
     await d.db.user.update({ where: { telegramId }, data: { lat, lng, locationAt: new Date() } });
     if (!(await linkOf(telegramId))) return void (await ctx.reply(`Got it. ${NEED_SETUP}`, { reply_markup: open("/app", "Set up") }));
     await showFeed(ctx, { lat, lng });
-  });
+  }
+
+  bot.on("message:location", (ctx) => useLocation(ctx, ctx.message.location.latitude, ctx.message.location.longitude));
+
+  // Telegram's desktop apps cannot send a location, so coordinates typed as text work too:
+  // "/here 6.6018, 3.3515" or just "6.6018, 3.3515".
+  const COORDS = /^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/;
+  const fromText = async (ctx: Context, text: string) => {
+    const m = COORDS.exec(text);
+    const lat = m ? Number(m[1]) : NaN;
+    const lng = m ? Number(m[2]) : NaN;
+    if (!m || Math.abs(lat) > 90 || Math.abs(lng) > 180) return void (await ctx.reply("Send coordinates like: /here 6.6018, 3.3515 (latitude, longitude). In Google Maps, long-press a spot to see them."));
+    await useLocation(ctx, lat, lng);
+  };
+  bot.command("here", (ctx) => fromText(ctx, ctx.match));
+  bot.hears(COORDS, (ctx) => fromText(ctx, ctx.message!.text!));
 
   bot.hears("My tasks", (ctx) => myTasks(ctx));
   bot.command("mytasks", (ctx) => myTasks(ctx));
