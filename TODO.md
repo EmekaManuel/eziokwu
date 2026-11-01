@@ -19,6 +19,9 @@ EIP-712 domain name is "Eziokwu BountyBoard" and must be changed before mainnet 
 - [x] 9 script tests; dry-run against live Celo for dev and prod passes (G$ decimals=18, Identity ABI present)
 - [ ] Before any real deploy: set FEE_RECIPIENT (UBI pool), OWNER (multisig), VERIFIER; import deployer keystore; get explicit go-ahead
 - [ ] Optional: Celoscan API key for --verify
+- [x] DEV DEPLOY DONE (Celo 42220, dev G$/Identity): BountyBoard 0x197773354317E55f4fAA31874Ea27a25B857226e, tx 0x6f01f5dc...7639, block 81602626, 0.54 CELO. On-chain owner/verifier/feeRecipient/feeBps/gd/identity verified. Placeholders: owner/verifier/feeRecipient are throwaway dev keys (see ~/.eziokwu-dev-keys.json, outside repo). Source NOT verified on Celoscan.
+- [ ] Before prod: new deploy with multisig owner, real UBI Pool as feeRecipient; rename check of EIP-712 domain
+
 ## Stage 3: Relayer + EIP-712 + Mini App  (DONE, awaiting "continue")
 - [x] /shared: APP_NAME constant, ABI (generated), EIP-712 types, link message, submission hashing, G$/NGN formatting
 - [x] /api: Telegram initData auth, wallet linking, relayer (claimFor/submitFor), CELO top-up (flag + per-address + daily cap), submissions store

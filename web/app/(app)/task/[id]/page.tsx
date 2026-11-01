@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { useAccount, usePublicClient, useReadContract, useSignTypedData } from "wagmi";
+import { useAccount, usePublicClient, useReadContract } from "wagmi";
 import { celo } from "wagmi/chains";
 import {
   bountyBoardAbi,
@@ -12,18 +12,20 @@ import {
   submitTypedData,
   type SubmissionPayload,
 } from "@eziokwu/shared";
+import { WalletBar } from "@/components/WalletBar";
 import { api, explain } from "@/lib/api";
 import { config } from "@/lib/config";
 import { useMe } from "@/lib/useMe";
+import { useMessageSigner } from "@/lib/useSigner";
 
 const CLAIM_STATES = ["none", "claimed", "submitted", "accepted", "rejected", "expired"] as const;
 
 export default function TaskPage() {
   const { id: idParam } = useParams<{ id: string }>();
   const bountyId = BigInt(/^\d+$/.test(idParam) ? idParam : "0");
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
-  const { signTypedDataAsync } = useSignTypedData();
+  const getSigner = useMessageSigner();
   const { data: me } = useMe();
   const worker = me?.address ?? address;
 
@@ -65,7 +67,7 @@ export default function TaskPage() {
     run(async () => {
       const deadline = inFifteenMinutes();
       const nonce = await readNonce();
-      const signature = await signTypedDataAsync(claimTypedData({ chainId: celo.id, board: config.board, bountyId, worker: worker!, nonce, deadline }));
+      const signature = await (await getSigner()).signTypedData({ account: worker!, ...claimTypedData({ chainId: celo.id, board: config.board, bountyId, worker: worker!, nonce, deadline }) });
       await api("/v1/relay/claim", { body: { bountyId: bountyId.toString(), deadline: deadline.toString(), signature } });
     });
 
@@ -85,7 +87,7 @@ export default function TaskPage() {
 
       const deadline = inFifteenMinutes();
       const nonce = await readNonce();
-      const signature = await signTypedDataAsync(submitTypedData({ chainId: celo.id, board: config.board, bountyId, worker: worker!, submissionHash: expected, nonce, deadline }));
+      const signature = await (await getSigner()).signTypedData({ account: worker!, ...submitTypedData({ chainId: celo.id, board: config.board, bountyId, worker: worker!, submissionHash: expected, nonce, deadline }) });
       await api("/v1/relay/submit", { body: { bountyId: bountyId.toString(), submissionHash: expected, deadline: deadline.toString(), signature } });
     });
 
@@ -110,10 +112,20 @@ export default function TaskPage() {
         <div className="row"><span className="hint">Closes</span><span>{new Date(Number(deadline) * 1000).toLocaleString()}</span></div>
       </div>
 
+      {!isConnected && (
+        <>
+          <p className="hint">Reconnect your wallet to sign. Signing is free and sends no money.</p>
+          <WalletBar />
+        </>
+      )}
+      {isConnected && !!me?.address && address?.toLowerCase() !== me.address.toLowerCase() && (
+        <p className="err">Connect the wallet you linked: <span className="mono">{me.address}</span></p>
+      )}
+
       {(!me?.linked || !me?.verified || !me?.approved) && <p className="err">Finish setup on the home page first (link, verify, approve).</p>}
 
       {state === "none" && (
-        <button disabled={busy || closed || open === 0 || !me?.approved || !me?.verified} onClick={doClaim}>
+        <button disabled={busy || !isConnected || closed || open === 0 || !me?.approved || !me?.verified} onClick={doClaim}>
           {busy ? "Working…" : "Take this task"}
         </button>
       )}
@@ -126,7 +138,7 @@ export default function TaskPage() {
           <input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))} />
           <label>Note (optional)</label>
           <textarea rows={2} maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} />
-          <button disabled={busy || !price} onClick={doSubmit}>
+          <button disabled={busy || !isConnected || !price} onClick={doSubmit}>
             {busy ? "Submitting…" : "Submit answer"}
           </button>
         </div>
