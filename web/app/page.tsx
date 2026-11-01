@@ -139,20 +139,25 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="lp-sec light">
+      <section className="lp-sec alt" id="launch">
         <div className="lp-wrap grid2">
           <div>
             <p className="eyebrow">Launch use case</p>
             <h2>A free weekly food-price index.</h2>
+            <p className="sec-sub" style={{ marginBottom: 0 }}>
+              We start with ten staple foods across local markets, collected every week by verified people on the ground and
+              published as a free public dataset. Journalists, researchers and anyone planning a budget can use it.
+            </p>
           </div>
-          <p className="sec-sub" style={{ margin: 0 }}>
-            We start with ten staple foods across local markets, collected every week by verified people on the ground and
-            published as a free public dataset. Journalists, researchers and anyone planning a budget can use it.
-          </p>
+          <div className="stat-row">
+            <div className="stat"><strong>10</strong><span>staple foods tracked</span></div>
+            <div className="stat"><strong>Weekly</strong><span>fresh prices, every week</span></div>
+            <div className="stat"><strong>Free</strong><span>public dataset for everyone</span></div>
+          </div>
         </div>
       </section>
 
-      <section className="lp-sec light" id="faq" style={{ paddingTop: 0 }}>
+      <section className="lp-sec light" id="faq">
         <div className="lp-wrap faq">
           <p className="eyebrow">Questions</p>
           <h2>Good to know.</h2>
