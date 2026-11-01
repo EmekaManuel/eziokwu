@@ -20,6 +20,9 @@ EIP-712 domain name is "Eziokwu BountyBoard" and must be changed before mainnet 
 - [ ] Before any real deploy: set FEE_RECIPIENT (UBI pool), OWNER (multisig), VERIFIER; import deployer keystore; get explicit go-ahead
 - [ ] Optional: Celoscan API key for --verify
 - [x] DEV DEPLOY DONE (Celo 42220, dev G$/Identity): BountyBoard 0x197773354317E55f4fAA31874Ea27a25B857226e, tx 0x6f01f5dc...7639, block 81602626, 0.54 CELO. On-chain owner/verifier/feeRecipient/feeBps/gd/identity verified. Placeholders: owner/verifier/feeRecipient are throwaway dev keys (see ~/.eziokwu-dev-keys.json, outside repo). Source NOT verified on Celoscan.
+- [x] E2E on dev (2026-11-01): link -> verify (dev Identity) -> approve -> claim (gasless) -> submit (gasless) -> accept -> worker +9.7 G$, feeRecipient +0.3 G$. Bounty #1 via scripts/dev-requester.sh.
+- [ ] Gas: createBounty ~560k gas = ~0.11 CELO at 200 gwei; relayer claims/submits cost real CELO, needs a funding/limits plan. Verifier address needs CELO to resolve.
+- [ ] Mini App task page still hard-codes "Price check"; task specs (title/item/unit/location) come with stage 4
 - [ ] Before prod: new deploy with multisig owner, real UBI Pool as feeRecipient; rename check of EIP-712 domain
 
 ## Stage 3: Relayer + EIP-712 + Mini App  (DONE, awaiting "continue")

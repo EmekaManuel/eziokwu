@@ -5,7 +5,7 @@
 #
 #   scripts/dev-requester.sh create [reward_gd] [bond_gd]     post a 1-hour, 1-answer bounty
 #   scripts/dev-requester.sh status <bountyId> [worker]       read-only
-#   scripts/dev-requester.sh resolve <bountyId> <worker> accept|reject   (verifier key)
+#   scripts/dev-requester.sh resolve <bountyId> <worker> accept|reject   (verifier key; RESOLVER=requester to use the requester key)
 set -euo pipefail
 
 KEYS="${EZIOKWU_KEYS:-$HOME/.eziokwu-dev-keys.json}"
@@ -49,7 +49,8 @@ case "${1:-}" in
   resolve)
     ID="${2:?bountyId}"; WORKER="${3:?worker address}"; V="${4:?accept|reject}"
     [ "$V" = accept ] && FLAG=true || FLAG=false
-    cast send "$BOARD" "resolve(uint256,address,bool)" "$ID" "$WORKER" "$FLAG" --private-key "$(key verifier)" --rpc-url "$RPC" >/dev/null
+    # The contract lets the requester or the verifier resolve; RESOLVER=requester when the verifier has no CELO.
+    cast send "$BOARD" "resolve(uint256,address,bool)" "$ID" "$WORKER" "$FLAG" --private-key "$(key "${RESOLVER:-verifier}")" --rpc-url "$RPC" >/dev/null
     echo "Resolved bounty $ID for $WORKER: $V"
     ;;
   *) sed -n '2,9p' "$0"; exit 1 ;;
